@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CinemaRater</title>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #21262d;
+    --border:    #30363d;
+    --accent:    #e6b84a;
+    --accent-dim:#c9972f;
+    --blue:      #58a6ff;
+    --green:     #3fb950;
+    --orange:    #d29922;
+    --red:       #f85149;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --radius:    10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Navbar ── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 58px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  .logo span { color: var(--text); font-weight: 300; }
+  .nav-stats { margin-left: auto; display: flex; gap: 20px; }
+  .stat { text-align: right; }
+  .stat-val { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 58px);
+  }
+
+  /* ── Sidebar ── */
+  aside {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  input, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+
+  .rating-row { display: flex; align-items: center; gap: 10px; }
+  .rating-row input[type=range] {
+    flex: 1; padding: 0; height: 4px;
+    -webkit-appearance: none;
+    background: var(--border); border-radius: 2px; border: none;
+  }
+  .rating-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  .rating-val {
+    min-width: 38px; text-align: center;
+    font-size: 16px; font-weight: 700; color: var(--accent);
+  }
+
+  .btn {
+    width: 100%; padding: 10px; border: none; border-radius: var(--radius);
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--accent); color: #0d1117; }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Filter section ── */
+  .filter-row { display: flex; gap: 8px; }
+  .filter-row input { flex: 1; }
+  .filter-row .btn { width: auto; padding: 9px 14px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); }
+
+  /* ── Main content ── */
+  main { padding: 24px; overflow-y: auto; }
+
+  .toolbar {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .toolbar h2 { font-size: 18px; font-weight: 600; flex: 1; }
+  .sort-btns { display: flex; gap: 6px; }
+  .sort-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); padding: 6px 12px; border-radius: 20px;
+    font-size: 12px; cursor: pointer; transition: all .15s;
+  }
+  .sort-btn.active, .sort-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Movie grid ── */
+  .movie-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .movie-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    transition: border-color .2s, transform .2s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+  .movie-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0; transition: opacity .2s;
+  }
+  .movie-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .movie-card:hover::before { opacity: 1; }
+
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+  .card-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+  .rating-badge {
+    min-width: 40px; height: 40px; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex-shrink: 0; font-weight: 800; font-size: 15px; line-height: 1;
+  }
+  .rating-badge .sub { font-size: 9px; font-weight: 400; opacity: .7; }
+
+  .genre-pill {
+    display: inline-block;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: .3px;
+    background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+  }
+
+  .stars { margin-top: 10px; display: flex; gap: 3px; }
+  .star { font-size: 13px; }
+
+  .card-id { font-size: 11px; color: var(--border); margin-top: 8px; }
+
+  /* ── Empty state ── */
+  .empty {
+    grid-column: 1/-1; text-align: center; padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 14px; }
+
+  /* ── Toast ── */
+  #toast-container {
+    position: fixed; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 10px; z-index: 999;
+  }
+  .toast {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 18px;
+    font-size: 13px; max-width: 300px;
+    animation: slideIn .25s ease; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast.success { border-color: var(--green); }
+  .toast.error   { border-color: var(--red); }
+  .toast-icon { font-size: 16px; }
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+
+  /* ── Loading spinner ── */
+  .loading {
+    grid-column: 1/-1; display: flex; justify-content: center;
+    padding: 60px; color: var(--muted);
+  }
+  .spinner {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--border); }
+    .nav-stats { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Cinema<span>Rater</span></div>
+  <div class="nav-stats">
+    <div class="stat">
+      <div class="stat-val" id="stat-total">—</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-avg">—</div>
+      <div class="stat-label">Avg Rating</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-genres">—</div>
+      <div class="stat-label">Genres</div>
+    </div>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- ── Sidebar ── -->
+  <aside>
+    <!-- Add Movie -->
+    <div>
+      <div class="panel-title">Add Movie</div>
+      <form id="add-form">
+        <div class="form-group">
+          <label>Title</label>
+          <input id="f-title" type="text" placeholder="e.g. The Dark Knight" required>
+        </div>
+        <div class="form-group">
+          <label>Genre</label>
+          <input id="f-genre" type="text" placeholder="e.g. Action, Drama…" required>
+        </div>
+        <div class="form-group">
+          <label>Rating</label>
+          <div class="rating-row">
+            <input id="f-rating" type="range" min="1" max="10" step="0.5" value="7.5">
+            <span class="rating-val" id="rating-display">7.5</span>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Movie</button>
+      </form>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Filter by Genre -->
+    <div>
+      <div class="panel-title">Filter by Genre</div>
+      <div class="filter-row">
+        <input id="f-filter-genre" type="text" placeholder="Genre name…">
+        <button class="btn btn-secondary" onclick="applyGenreFilter()">Go</button>
+      </div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="loadAll()">Show All</button>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Top-N -->
+    <div>
+      <div class="panel-title">Top Rated</div>
+      <div class="filter-row">
+        <input id="f-topn" type="number" placeholder="N (default 5)" min="1" max="100">
+        <button class="btn btn-secondary" onclick="loadTopN()">Go</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main>
+    <div class="toolbar">
+      <h2 id="list-title">All Movies</h2>
+      <div class="sort-btns">
+        <button class="sort-btn active" id="sort-rating" onclick="setSort('rating')">Rating ↓</button>
+        <button class="sort-btn" id="sort-title"  onclick="setSort('title')">Title A–Z</button>
+        <button class="sort-btn" id="sort-id"     onclick="setSort('id')">Newest</button>
+      </div>
+    </div>
+    <div class="movie-grid" id="movie-grid">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  const API = 'http://localhost:7071';
+  let allMovies = [];
+  let currentSort = 'rating';
+
+  // ── Boot ──
+  loadAll();
+
+  // ── Rating slider live feedback ──
+  document.getElementById('f-rating').addEventListener('input', function() {
+    document.getElementById('rating-display').textContent = this.value;
+  });
+
+  // ── Add movie form ──
+  document.getElementById('add-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const title  = document.getElementById('f-title').value.trim();
+    const genre  = document.getElementById('f-genre').value.trim();
+    const rating = parseFloat(document.getElementById('f-rating').value);
+    try {
+      const res = await fetch(API + '/movies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, genre, rating })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Unknown error');
+      }
+      const movie = await res.json();
+      toast('Added: ' + movie.title, 'success');
+      this.reset();
+      document.getElementById('f-rating').value = 7.5;
+      document.getElementById('rating-display').textContent = '7.5';
+      loadAll();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  // ── Load & render ──
+  async function loadAll() {
+    document.getElementById('list-title').textContent = 'All Movies';
+    try {
+      const res = await fetch(API + '/movies');
+      allMovies = await res.json();
+      render(allMovies);
+      updateStats(allMovies);
+    } catch {
+      showNetworkError();
+    }
+  }
+
+  async function applyGenreFilter() {
+    const genre = document.getElementById('f-filter-genre').value.trim();
+    if (!genre) { loadAll(); return; }
+    document.getElementById('list-title').textContent = 'Genre: ' + genre;
+    try {
+      const res = await fetch(API + '/movies?genre=' + encodeURIComponent(genre));
+      const movies = await res.json();
+      allMovies = movies;
+      render(movies);
+    } catch { showNetworkError(); }
+  }
+
+  async function loadTopN() {
+    const n = parseInt(document.getElementById('f-topn').value) || 5;
+    document.getElementById('list-title').textContent = 'Top ' + n + ' Movies';
+    try {
+      const res = await fetch(API + '/movies/top?n=' + n);
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+      const movies = await res.json();
+      allMovies = movies;
+      render(movies);
+    } catch (err) { toast(err.message, 'error'); }
+  }
+
+  function setSort(type) {
+    currentSort = type;
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sort-' + type).classList.add('active');
+    render(allMovies);
+  }
+
+  function sorted(movies) {
+    const copy = [...movies];
+    if (currentSort === 'rating') copy.sort((a, b) => b.rating - a.rating);
+    else if (currentSort === 'title') copy.sort((a, b) => a.title.localeCompare(b.title));
+    else copy.sort((a, b) => b.id - a.id);
+    return copy;
+  }
+
+  function render(movies) {
+    const grid = document.getElementById('movie-grid');
+    if (!movies.length) {
+      grid.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><p>No movies found.</p></div>';
+      return;
+    }
+    grid.innerHTML = sorted(movies).map(movieCard).join('');
+  }
+
+  function movieCard(m) {
+    const { bg, color } = ratingColors(m.rating);
+    const stars = starsHtml(m.rating);
+    return `
+    <div class="movie-card">
+      <div class="card-header">
+        <div class="card-title">${esc(m.title)}</div>
+        <div class="rating-badge" style="background:${bg};color:${color}">
+          ${m.rating.toFixed(1)}
+          <span class="sub">/10</span>
+        </div>
+      </div>
+      <span class="genre-pill">${esc(m.genre)}</span>
+      <div class="stars">${stars}</div>
+      <div class="card-id">#${m.id}</div>
+    </div>`;
+  }
+
+  function ratingColors(r) {
+    if (r >= 8.5) return { bg: 'rgba(63,185,80,.18)',  color: '#3fb950' };
+    if (r >= 7.0) return { bg: 'rgba(88,166,255,.15)', color: '#58a6ff' };
+    if (r >= 5.0) return { bg: 'rgba(210,153,34,.18)', color: '#d29922' };
+    return              { bg: 'rgba(248,81,73,.18)',   color: '#f85149' };
+  }
+
+  function starsHtml(rating) {
+    const full  = Math.floor(rating / 2);
+    const half  = (rating / 2 - full) >= 0.5 ? 1 : 0;
+    const empty = 5 - full - half;
+    return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+  }
+
+  function updateStats(movies) {
+    document.getElementById('stat-total').textContent = movies.length;
+    if (movies.length) {
+      const avg = movies.reduce((s, m) => s + m.rating, 0) / movies.length;
+      document.getElementById('stat-avg').textContent = avg.toFixed(1);
+    } else {
+      document.getElementById('stat-avg').textContent = '—';
+    }
+    const genres = new Set(movies.map(m => m.genre.toLowerCase())).size;
+    document.getElementById('stat-genres').textContent = genres || '—';
+  }
+
+  function showNetworkError() {
+    document.getElementById('movie-grid').innerHTML =
+      '<div class="empty"><div class="empty-icon">⚠️</div>' +
+      '<p>Cannot connect to API.<br>Make sure the server is running on port 7070.</p></div>';
+  }
+
+  // ── Toast ──
+  function toast(msg, type) {
+    const icon = type === 'success' ? '✓' : '✕';
+    const el = document.createElement('div');
+    el.className = 'toast ' + (type || '');
+    el.innerHTML = `<span class="toast-icon">${icon}</span><span>${esc(msg)}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

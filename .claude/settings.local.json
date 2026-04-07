@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where mvn:*)",
+      "Read(//c//**)",
+      "Read(//c/Users/Lenovo/scoop/shims/**)",
+      "Read(//c/Users/Lenovo/**)",
+      "Read(//c/opt/maven/bin/**)",
+      "Bash(echo \"JAVA_HOME=$JAVA_HOME\")",
+      "Bash(echo \"PATH=$PATH\")",
+      "Bash(MVN=\"/d/IntelliJ IDEA Community Edition 2024.3.1.1/plugins/maven/lib/maven3/bin/mvn\")",
+      "Bash(JAVA_HOME=\"D:/java-1.8.0-openjdk-1.8.0.392-1.b08.redhat.windows.x86_64\" \"$MVN\" test -f \"C:/Users/Lenovo/IdeaProjects/CCPractice/pom.xml\")"
+    ]
+  }
+}
